@@ -22,7 +22,7 @@ const (
 	PlayerMissilePoolSize = 80
 )
 
-func Initialize(windowTitle string) (*pgl.WindowConfig, *pgl.Window, *FrameLimiter) {
+func Initialize(windowTitle string) *Game { // (*pgl.WindowConfig, *pgl.Window, *FrameLimiter)
 	wcfg := pgl.WindowConfig{
 		Title:  windowTitle,
 		Bounds: pix.R(0, 0, WindowWidth, WindowHeight),
@@ -34,7 +34,9 @@ func Initialize(windowTitle string) (*pgl.WindowConfig, *pgl.Window, *FrameLimit
 
 	framer := NewFrameLimiter()
 
-	return &wcfg, win, framer
+	g := Game{wcfg: &wcfg, win: win, framer: framer}
+
+	return &g
 }
 
 func LoadPicture(path string) (pix.Picture, error) {

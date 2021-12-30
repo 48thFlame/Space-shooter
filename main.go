@@ -1,7 +1,6 @@
 package main
 
 import (
-	"image/color"
 	_ "image/png"
 
 	"github.com/faiface/pixel/pixelgl"
@@ -12,21 +11,10 @@ func main() {
 }
 
 func run() {
-	wcfg, win, framer := Initialize("Space shooter!")
-	framer.InitFrameCounter()
+	game := Initialize("Space shooter")
 
-	plr := NewPlayer(win)
+	plr := NewPlayer(game.win)
+	game.entities = append(game.entities, plr)
 
-	for !win.Closed() {
-		if framer.ShouldDoNextFrame() {
-			win.Clear(color.RGBA{30, 30, 30, 255})
-
-			plr.Update()
-			plr.Draw()
-
-			framer.SetTitleWithFPS(win, wcfg)
-			
-			win.Update()
-		}
-	}
+	game.GameLoop()
 }
