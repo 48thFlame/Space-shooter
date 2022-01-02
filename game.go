@@ -16,18 +16,23 @@ type Game struct {
 func (g *Game) GameLoop() {
 	g.framer.InitFrameCounter()
 
-	for !g.win.Closed() {
-		if g.framer.ShouldDoNextFrame() {
-			g.win.Clear(color.RGBA{30, 30, 30, 255})
+	if g.framer.ShouldDoNextFrame() {
+		g.win.Clear(color.RGBA{30, 30, 30, 255})
 
-			for _, e := range g.entities {
-				e.Update()
-				e.Draw()
-			}
-
-			g.framer.SetTitleWithFPS(g.win, g.wcfg)
-
-			g.win.Update()
+		for _, e := range g.entities {
+			e.Update()
+			e.Draw()
 		}
+
+		g.framer.SetTitleWithFPS(g.win, g.wcfg)
+
+		g.win.Update()
 	}
+}
+
+func (g *Game) AddEntity(e *Entity) {
+	g.entities = append(g.entities, e)
+	// if collision {
+	// 	g.collisionEntities = append(g.collisionEntities, e)
+	// }
 }

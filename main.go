@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	_ "image/png"
 
 	"github.com/faiface/pixel/pixelgl"
@@ -14,7 +15,18 @@ func run() {
 	game := Initialize("Space shooter")
 
 	plr := NewPlayer(game.win)
-	game.entities = append(game.entities, plr)
 
-	game.GameLoop()
+	annoyingThing := NewEntity("sprites/annoyingThing.png", game.win)
+	annoyingThing.pos = game.win.Bounds().Center()
+
+	game.AddEntity(plr)
+	game.AddEntity(annoyingThing)
+
+	for !game.win.Closed() {
+		game.GameLoop()
+		touch := CheckCollision(plr, annoyingThing)
+		if touch {
+			fmt.Printf("touched?: %v\n", touch)
+		}
+	}
 }

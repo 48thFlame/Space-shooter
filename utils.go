@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"image"
+	"math"
 	"os"
 	"time"
-	"math"
 
 	pix "github.com/faiface/pixel"
 	pixgl "github.com/faiface/pixel/pixelgl"
@@ -15,8 +15,8 @@ const (
 	FPS                   = 50 // ! not exact !!
 	MillersecondsPerFrame = 1000 / FPS
 
-	WindowWidth  = 1024
-	WindowHeight = 768
+	WindowWidth  = 1120
+	WindowHeight = 864
 )
 
 func Initialize(windowTitle string) *Game { // (*pgl.WindowConfig, *pgl.Window, *FrameLimiter)
@@ -53,6 +53,31 @@ func LoadPicture(path string) (pix.Picture, error) {
 func ChangeXY(a float64) (float64, float64) {
 	// return math.Cos(a), -1 * math.Sin(a)
 	return -1 * math.Sin(a), math.Cos(a)
+}
+
+// func Contains(s []int, e int) bool {
+//     for _, a := range s {
+//         if a == e {
+//             return true
+//         }
+//     }
+//     return false
+// }
+
+func EntityR(e *Entity) pix.Rect {
+	ewh := e.dim.width / 2 // entity width half
+	ehh := e.dim.height / 2
+	ex := e.pos.X
+	ey := e.pos.Y
+
+	return pix.R(ex-ewh, ey-ehh, ex+ewh, ey+ehh)
+}
+
+func CheckCollision(e1, e2 *Entity) bool {
+	e1r := EntityR(e1)
+	e2r := EntityR(e2)
+
+	return e1r.Intersects(e2r)
 }
 
 func KeyPressed(e *Entity, key pixgl.Button) bool {
