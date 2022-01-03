@@ -55,14 +55,19 @@ func ChangeXY(a float64) (float64, float64) {
 	return -1 * math.Sin(a), math.Cos(a)
 }
 
-// func Contains(s []int, e int) bool {
-//     for _, a := range s {
-//         if a == e {
-//             return true
-//         }
-//     }
-//     return false
-// }
+func Contains(s []int, e int) bool {
+    for _, a := range s {
+        if a == e {
+            return true
+        }
+    }
+    return false
+}
+
+func RemoveFromESlice(s []*Entity, i int) []*Entity {
+    s[i] = s[len(s)-1]
+    return s[:len(s)-1]
+}
 
 func EntityR(e *Entity) pix.Rect {
 	ewh := e.dim.width / 2 // entity width half
@@ -83,6 +88,8 @@ func CheckCollision(e1, e2 *Entity) bool {
 func KeyPressed(e *Entity, key pixgl.Button) bool {
 	return e.win.Pressed(key)
 }
+
+// // spacer
 
 func NewEntity(pictureFile string, win *pixgl.Window) *Entity {
 	e := Entity{}
@@ -106,8 +113,6 @@ func NewEntity(pictureFile string, win *pixgl.Window) *Entity {
 
 	return &e
 }
-
-// // spacer
 
 type Entity struct {
 	active  bool
@@ -152,31 +157,33 @@ func (e *Entity) Update() error {
 
 func NewFrameLimiter() *FrameLimiter {
 	return &FrameLimiter{
-		millisPerFrame: MillersecondsPerFrame,
-		last:           time.Now(),
+		frames: 0,
+		second: time.Tick(time.Second),
 	}
+		// millisPerFrame: MillersecondsPerFrame,
+		// last:           time.Now(),
 }
 
 type FrameLimiter struct {
-	millisPerFrame int64
-	last           time.Time
+	// millisPerFrame int64
+	// last           time.Time
 	frames         uint
 	second         <-chan time.Time
 }
 
-func (f *FrameLimiter) ShouldDoNextFrame() bool {
-	dt := time.Since(f.last).Milliseconds()
-	if dt > f.millisPerFrame {
-		f.last = time.Now()
-		return true
-	}
-	return false
-}
+// func (f *FrameLimiter) ShouldDoNextFrame() bool {
+// 	dt := time.Since(f.last).Milliseconds()
+// 	if dt > f.millisPerFrame {
+// 		f.last = time.Now()
+// 		return true
+// 	}
+// 	return false
+// }
 
-func (f *FrameLimiter) InitFrameCounter() {
-	f.frames = 0
-	f.second = time.Tick(time.Second)
-}
+// func (f *FrameLimiter) InitFrameCounter() {
+// 	f.frames = 0
+// 	f.second = time.Tick(time.Second)
+// }
 
 func (f *FrameLimiter) SetTitleWithFPS(win *pixgl.Window, wcfg *pixgl.WindowConfig) {
 	f.frames++

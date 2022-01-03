@@ -14,7 +14,7 @@ const (
 	PlayerRotSpeed                 = 0.11
 	PlayerCooldown                 = time.Millisecond * 125
 	PlayerMissileSpeed             = 25
-	PlayerMissilePoolSize          = 80
+	PlayerMissilePoolSize          = 50
 )
 
 func NewPlayer(win *pixgl.Window) *Entity {
@@ -31,7 +31,7 @@ func NewPlayer(win *pixgl.Window) *Entity {
 	var plrMissilePool []*Entity
 	for i := 0; i < PlayerMissilePoolSize; i++ {
 		missile := NewEntity("sprites/missile.png", win)
-		missile.active = false
+		// missile.active = false
 		plrMissilePool = append(plrMissilePool, missile)
 	}
 	plrShooting := PlayerShooting{
@@ -49,7 +49,7 @@ func NewPlayer(win *pixgl.Window) *Entity {
 	}
 	plr.expands = append(plr.expands, &plrFire)
 
-	// plr.pos = win.Bounds().Center()
+	plr.pos = win.Bounds().Center()
 
 	return plr
 }
@@ -116,50 +116,59 @@ type PlayerShooting struct {
 	shoot        pixgl.Button
 	missileSpeed float64
 	pool         []*Entity
+	activePool   []*Entity
 	cooldown     time.Duration
 	lastShot     time.Time
 }
 
-func (ps *PlayerShooting) MoveMissileOffPlayer(missile, plr *Entity) {
+func (ps *PlayerShooting) MoveMissileFrontOfPlayer(missile, plr *Entity) {
 	xv, yv := ChangeXY(missile.rot)
 	missile.pos.X += xv * plr.dim.width / 2
 	missile.pos.Y += yv * plr.dim.height / 2
 }
 
 func (ps *PlayerShooting) ExpandUpdate(p *Entity) error {
-	for _, missile := range ps.pool {
-		if missile.active {
-			// missile.pos.Y += ps.missileSpeed
-			xv, yv := ChangeXY(missile.rot)
-			missile.pos.X += xv * ps.missileSpeed
-			missile.pos.Y += yv * ps.missileSpeed
-			if missile.pos.Y > WindowHeight || missile.pos.Y < 0 || missile.pos.X > WindowWidth || missile.pos.X < 0 {
-				missile.active = false
-			} else {
-				missile.Draw()
-			}
+	var IToBeMoved []int
+
+	for missileI, missile := range ps.activePool {
+		xv, yv := ChangeXY(missile.rot)
+		missile.pos.X += xv * ps.missileSpeed
+		missile.pos.Y += yv * ps.missileSpeed
+
+		if missile.pos.Y > WindowHeight || missile.pos.Y < 0 || missile.pos.X > WindowWidth || missile.pos.X < 0 {
+			IToBeMoved = append(IToBeMoved, missileI)
+		} else {
+			missile.Draw()
 		}
 	}
+
+	var newActivePool []*Entity
+	for i := 0; i < len(ps.activePool); i++ {
+		if Contains(IToBeMoved, i) {
+			ps.pool = append(ps.pool, ps.activePool[i])
+		} else {
+			newActivePool = append(newActivePool, ps.activePool[i])
+		}
+	}
+
+	ps.activePool = newActivePool
+
 	if KeyPressed(p, ps.shoot) {
 		if time.Since(ps.lastShot) >= ps.cooldown {
-			var missile *Entity
+			if len(ps.pool) > 0 {
+				missile := ps.pool[0]
+				ps.pool = RemoveFromESlice(ps.pool, 0)
 
-			// find un active missile and activate it after putting it in the right place
-			for i, missileInPool := range ps.pool {
-				if !missileInPool.active {
-					missile = ps.pool[i]
-					break
-				}
+				missile.rot = p.rot
+				missile.pos = p.pos
+				ps.MoveMissileFrontOfPlayer(missile, p)
+
+				ps.activePool = append(ps.activePool, missile)
+				ps.lastShot = time.Now()
 			}
-
-			missile.active = true
-			missile.rot = p.rot
-			missile.pos = p.pos
-			ps.MoveMissileOffPlayer(missile, p)
-
-			ps.lastShot = time.Now()
 		}
 	}
+
 	return nil
 }
 
@@ -173,22 +182,15 @@ func (pf *PlayerFire) MoveToFireBackOfPlayer(fire, plr *Entity) {
 	fire.pos = plr.pos
 	fire.pos.X += xv * plr.dim.width / 2
 	fire.pos.Y += yv * plr.dim.height / 2
-	// fire.pos = pixel.V(100, 100)
 }
 
 func (pf *PlayerFire) ExpandUpdate(p *Entity) error {
-	// fmt.Println("here")
 	pf.fire.rot = p.rot + math.Pi
 	pf.MoveToFireBackOfPlayer(pf.fire, p)
 
 	if KeyPressed(p, pf.pc.forward) {
-		pf.fire.active = true
-
-	} else {
-		pf.fire.active = false
+		pf.fire.Draw()
 	}
-
-	pf.fire.Draw()
 
 	return nil
 }
