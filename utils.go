@@ -3,12 +3,18 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/color"
+	"io/ioutil"
 	"math"
 	"os"
 	"time"
 
 	pix "github.com/faiface/pixel"
 	pixgl "github.com/faiface/pixel/pixelgl"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
+
+	"github.com/faiface/pixel/text"
 )
 
 const (
@@ -30,11 +36,14 @@ func Initialize(windowTitle string) *Game { // (*pgl.WindowConfig, *pgl.Window, 
 	}
 	win.SetSmooth(true)
 
-	framer := NewFrameLimiter()
+	framer := NewFrameCounter()
 
-	g := Game{wcfg: &wcfg, win: win, framer: framer}
+	g := &Game{wcfg: &wcfg, win: win, framer: framer}
+	g.score = 0
+	g.level = 1
+	g.tw = NewTextWriter(g)
 
-	return &g
+	return g
 }
 
 func LoadPicture(path string) (pix.Picture, error) {
@@ -51,22 +60,21 @@ func LoadPicture(path string) (pix.Picture, error) {
 }
 
 func ChangeXY(a float64) (float64, float64) {
-	// return math.Cos(a), -1 * math.Sin(a)
 	return -1 * math.Sin(a), math.Cos(a)
 }
 
 func Contains(s []int, e int) bool {
-    for _, a := range s {
-        if a == e {
-            return true
-        }
-    }
-    return false
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func RemoveFromESlice(s []*Entity, i int) []*Entity {
-    s[i] = s[len(s)-1]
-    return s[:len(s)-1]
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
 }
 
 func EntityR(e *Entity) pix.Rect {
@@ -103,7 +111,6 @@ func NewEntity(pictureFile string, win *pixgl.Window) *Entity {
 	width := rect.Max.X - rect.Min.X
 	height := rect.Max.Y - rect.Min.Y
 
-	e.active = true
 	e.rot = 0
 	e.pos = pix.Vec{X: 0, Y: 0}
 	e.dim = Dimension{width: width, height: height}
@@ -115,7 +122,6 @@ func NewEntity(pictureFile string, win *pixgl.Window) *Entity {
 }
 
 type Entity struct {
-	active  bool
 	rot     float64       // rotation
 	pos     pix.Vec       // postition
 	dim     Dimension     // dimensions
@@ -134,13 +140,11 @@ type Expantion interface {
 }
 
 func (e *Entity) Draw() {
-	if e.active {
-		mat := pix.IM
-		mat = mat.Moved(e.pos)
-		mat = mat.Rotated(e.pos, e.rot)
+	mat := pix.IM
+	mat = mat.Moved(e.pos)
+	mat = mat.Rotated(e.pos, e.rot)
 
-		e.spr.Draw(e.win, mat)
-	}
+	e.spr.Draw(e.win, mat)
 }
 
 func (e *Entity) Update() error {
@@ -155,37 +159,19 @@ func (e *Entity) Update() error {
 
 // // spacer
 
-func NewFrameLimiter() *FrameLimiter {
-	return &FrameLimiter{
+func NewFrameCounter() *FrameCounter {
+	return &FrameCounter{
 		frames: 0,
 		second: time.Tick(time.Second),
 	}
-		// millisPerFrame: MillersecondsPerFrame,
-		// last:           time.Now(),
 }
 
-type FrameLimiter struct {
-	// millisPerFrame int64
-	// last           time.Time
-	frames         uint
-	second         <-chan time.Time
+type FrameCounter struct {
+	frames uint
+	second <-chan time.Time
 }
 
-// func (f *FrameLimiter) ShouldDoNextFrame() bool {
-// 	dt := time.Since(f.last).Milliseconds()
-// 	if dt > f.millisPerFrame {
-// 		f.last = time.Now()
-// 		return true
-// 	}
-// 	return false
-// }
-
-// func (f *FrameLimiter) InitFrameCounter() {
-// 	f.frames = 0
-// 	f.second = time.Tick(time.Second)
-// }
-
-func (f *FrameLimiter) SetTitleWithFPS(win *pixgl.Window, wcfg *pixgl.WindowConfig) {
+func (f *FrameCounter) SetTitleWithFPS(win *pixgl.Window, wcfg *pixgl.WindowConfig) {
 	f.frames++
 	select {
 	case <-f.second:
@@ -193,4 +179,58 @@ func (f *FrameLimiter) SetTitleWithFPS(win *pixgl.Window, wcfg *pixgl.WindowConf
 		f.frames = 0
 	default:
 	}
+}
+
+// // spacer
+
+func LoadTTF(path string, size float64) (font.Face, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	font, err := truetype.Parse(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return truetype.NewFace(font, &truetype.Options{
+		Size:              size,
+		GlyphCacheEntries: 1,
+	}), nil
+}
+
+func NewTextWriter(g *Game) *TextWriter {
+	tw := &TextWriter{}
+
+	tw.g = g
+	font, err := LoadTTF("arial.ttf", 48)
+	if err != nil {
+		panic(err)
+	}
+
+	tw.atlas = text.NewAtlas(font, text.ASCII)
+	tw.txt = text.New(pix.V(0, 0), tw.atlas)
+
+	return tw
+}
+
+type TextWriter struct {
+	g     *Game
+	atlas *text.Atlas
+	txt   *text.Text
+}
+
+func (tw *TextWriter) WriteText(txt string, pos pix.Vec, color color.Color) {
+	tw.txt.Clear()
+	tw.txt.Color = color
+	tw.txt.WriteString(txt)
+	txtMoved := pix.IM.Moved( /*tw.g.win.Bounds().Center().Sub(tw.txt.Bounds().Center())*/ pos)
+	tw.txt.Draw(tw.g.win, txtMoved)
 }

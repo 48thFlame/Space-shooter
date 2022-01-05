@@ -15,18 +15,19 @@ const (
 	PlayerAccSpeed                 = 0.66
 	PlayerMaxSpeed                 = 16
 	PlayerPercentOfSpeedShouldSlow = 0.02
-	PlayerRotSpeed                 = 0.11
+	PlayerRotSpeed                 = 0.17
 	PlayerCooldown                 = time.Millisecond * 125
 	PlayerMissileSpeed             = 25
 	PlayerMissilePoolSize          = 50
-	PlayerNumberOfRocks            = 12
+	NumOfRockPerLevel              = 4
 	RockMaxSpeed                   = 4.5
 	RockMinSpeed                   = 1.5
 	MissileDeleteYRange            = -10000 // the y that if a missile are below should delete them
+	RockDestroyScoreNum            = 10
 )
 
-func NewPlayer(win *pixgl.Window) *Entity {
-	plr := NewEntity("sprites/player.png", win)
+func NewPlayer(g *Game) *Entity {
+	plr := NewEntity("sprites/player.png", g.win)
 
 	plrControl := PlayerControl{
 		speed:   PlayerAccSpeed,
@@ -38,7 +39,7 @@ func NewPlayer(win *pixgl.Window) *Entity {
 
 	var plrMissilePool []*Entity
 	for i := 0; i < PlayerMissilePoolSize; i++ {
-		missile := NewEntity("sprites/missile.png", win)
+		missile := NewEntity("sprites/missile.png", g.win)
 		plrMissilePool = append(plrMissilePool, missile)
 	}
 	plrShooting := &PlayerShooting{
@@ -49,22 +50,24 @@ func NewPlayer(win *pixgl.Window) *Entity {
 	}
 	plr.expands = append(plr.expands, plrShooting)
 
-	fire := NewEntity("sprites/fire.png", win)
+	fire := NewEntity("sprites/fire.png", g.win)
 	plrFire := PlayerFire{
 		pc:   &plrControl,
 		fire: fire,
 	}
 	plr.expands = append(plr.expands, &plrFire)
 
-	prc := NewRockController(plr)
+	prc := NewRockController(plr, g)
 	plr.expands = append(plr.expands, prc)
 
 	pmrc := &PlayerMissileRockCollision{}
 	pmrc.ps = plrShooting
 	pmrc.prc = prc
+	pmrc.g = g
+	pmrc.plr = plr
 	plr.expands = append(plr.expands, pmrc)
 
-	plr.pos = win.Bounds().Center()
+	plr.pos = g.win.Bounds().Center()
 
 	return plr
 }
@@ -210,12 +213,10 @@ func (pf *PlayerFire) ExpandUpdate(p *Entity) error {
 	return nil
 }
 
-func NewRockController(plr *Entity) *PlayerRockController {
+func NewRockController(plr *Entity, g *Game) *PlayerRockController {
 	prc := &PlayerRockController{}
 
-	for i := 0; i < PlayerNumberOfRocks; i++ {
-		prc.pool = append(prc.pool, NewRock(prc, plr))
-	}
+	prc.GenLevel(g, plr)
 
 	return prc
 }
@@ -234,8 +235,8 @@ func (prc *PlayerRockController) ExpandUpdate(plr *Entity) error {
 	return nil
 }
 
-func NewRock(prc *PlayerRockController, plr *Entity) *Entity {
-	rock := NewEntity("sprites/rock2.png", plr.win)
+func NewRock(prc *PlayerRockController, plr *Entity, size int) *Entity {
+	rock := NewEntity(fmt.Sprintf("sprites/rock%v.png", size), plr.win)
 	rock.rot = rand.Float64() * (math.Pi*4 - 0)
 
 	rockXOptions := []float64{0, float64(WindowWidth)}
@@ -246,6 +247,7 @@ func NewRock(prc *PlayerRockController, plr *Entity) *Entity {
 
 	re := RockExpand{}
 	re.speed = RockMinSpeed + rand.Float64()*(RockMaxSpeed-RockMinSpeed)
+	re.size = size
 	re.plr = plr
 
 	rock.expands = append(rock.expands, &re)
@@ -257,6 +259,7 @@ func NewRock(prc *PlayerRockController, plr *Entity) *Entity {
 type RockExpand struct {
 	plr   *Entity
 	speed float64
+	size  int
 }
 
 func (re *RockExpand) Moverock(rock *Entity) {
@@ -281,9 +284,6 @@ func (re *RockExpand) Moverock(rock *Entity) {
 }
 
 func (re *RockExpand) ExpandUpdate(rock *Entity) error {
-	// if rock.pos.Y < EntityDeleteYRange {
-
-	// }
 	re.Moverock(rock)
 
 	if CheckCollision(re.plr, rock) {
@@ -296,6 +296,8 @@ func (re *RockExpand) ExpandUpdate(rock *Entity) error {
 type PlayerMissileRockCollision struct {
 	ps  *PlayerShooting
 	prc *PlayerRockController
+	g   *Game
+	plr *Entity
 }
 
 func (pmrc *PlayerMissileRockCollision) ExpandUpdate(rock *Entity) error {
@@ -305,7 +307,8 @@ func (pmrc *PlayerMissileRockCollision) ExpandUpdate(rock *Entity) error {
 	for _, missile := range pmrc.ps.activePool {
 		for rockI, rock := range pmrc.prc.pool {
 			if CheckCollision(missile, rock) {
-				fmt.Println("Missile hit!")
+				pmrc.g.score += RockDestroyScoreNum
+				fmt.Println(pmrc.g.score)
 				rockIRemove = append(rockIRemove, rockI)
 				missile.pos.Y = MissileDeleteYRange
 			}
@@ -319,5 +322,17 @@ func (pmrc *PlayerMissileRockCollision) ExpandUpdate(rock *Entity) error {
 		rocksRemoved++
 	}
 
+	if len(pmrc.prc.pool) == 0 {
+		pmrc.g.level += 1
+		pmrc.prc.GenLevel(pmrc.g, pmrc.plr)
+		return nil
+	}
+
 	return nil
+}
+
+func (prc *PlayerRockController) GenLevel(g *Game, plr *Entity) {
+	for i := 0; i < NumOfRockPerLevel*g.level; i++ {
+		prc.pool = append(prc.pool, NewRock(prc, plr, rand.Intn(2)+1))
+	}
 }

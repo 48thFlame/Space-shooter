@@ -17,7 +17,7 @@ func run() {
 	game := Initialize("Space shooter")
 	rand.Seed(time.Now().UnixNano())
 
-	plr := NewPlayer(game.win)
+	plr := NewPlayer(game)
 
 	// annoyingThing := NewEntity("sprites/annoyingThing.png", game.win)
 	// annoyingThing.pos = game.win.Bounds().Center()
