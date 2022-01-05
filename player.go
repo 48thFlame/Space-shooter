@@ -1,9 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"math"
+	"math/rand"
+	"sort"
 	"time"
 
+	pix "github.com/faiface/pixel"
 	pixgl "github.com/faiface/pixel/pixelgl"
 )
 
@@ -15,6 +19,10 @@ const (
 	PlayerCooldown                 = time.Millisecond * 125
 	PlayerMissileSpeed             = 25
 	PlayerMissilePoolSize          = 50
+	PlayerNumberOfRocks            = 12
+	RockMaxSpeed                   = 4.5
+	RockMinSpeed                   = 1.5
+	MissileDeleteYRange            = -10000 // the y that if a missile are below should delete them
 )
 
 func NewPlayer(win *pixgl.Window) *Entity {
@@ -31,16 +39,15 @@ func NewPlayer(win *pixgl.Window) *Entity {
 	var plrMissilePool []*Entity
 	for i := 0; i < PlayerMissilePoolSize; i++ {
 		missile := NewEntity("sprites/missile.png", win)
-		// missile.active = false
 		plrMissilePool = append(plrMissilePool, missile)
 	}
-	plrShooting := PlayerShooting{
+	plrShooting := &PlayerShooting{
 		shoot:        pixgl.KeyS,
 		missileSpeed: PlayerMissileSpeed,
 		pool:         plrMissilePool,
 		cooldown:     PlayerCooldown,
 	}
-	plr.expands = append(plr.expands, &plrShooting)
+	plr.expands = append(plr.expands, plrShooting)
 
 	fire := NewEntity("sprites/fire.png", win)
 	plrFire := PlayerFire{
@@ -48,6 +55,14 @@ func NewPlayer(win *pixgl.Window) *Entity {
 		fire: fire,
 	}
 	plr.expands = append(plr.expands, &plrFire)
+
+	prc := NewRockController(plr)
+	plr.expands = append(plr.expands, prc)
+
+	pmrc := &PlayerMissileRockCollision{}
+	pmrc.ps = plrShooting
+	pmrc.prc = prc
+	plr.expands = append(plr.expands, pmrc)
 
 	plr.pos = win.Bounds().Center()
 
@@ -190,6 +205,118 @@ func (pf *PlayerFire) ExpandUpdate(p *Entity) error {
 
 	if KeyPressed(p, pf.pc.forward) {
 		pf.fire.Draw()
+	}
+
+	return nil
+}
+
+func NewRockController(plr *Entity) *PlayerRockController {
+	prc := &PlayerRockController{}
+
+	for i := 0; i < PlayerNumberOfRocks; i++ {
+		prc.pool = append(prc.pool, NewRock(prc, plr))
+	}
+
+	return prc
+}
+
+// expansion to go on player
+type PlayerRockController struct {
+	pool []*Entity
+}
+
+func (prc *PlayerRockController) ExpandUpdate(plr *Entity) error {
+	for _, rock := range prc.pool {
+		rock.Update()
+		rock.Draw()
+	}
+
+	return nil
+}
+
+func NewRock(prc *PlayerRockController, plr *Entity) *Entity {
+	rock := NewEntity("sprites/rock2.png", plr.win)
+	rock.rot = rand.Float64() * (math.Pi*4 - 0)
+
+	rockXOptions := []float64{0, float64(WindowWidth)}
+	rockYOptions := []float64{0, float64(WindowHeight)}
+
+	rock.pos.X = rockXOptions[rand.Intn(2)]
+	rock.pos.Y = rockYOptions[rand.Intn(2)]
+
+	re := RockExpand{}
+	re.speed = RockMinSpeed + rand.Float64()*(RockMaxSpeed-RockMinSpeed)
+	re.plr = plr
+
+	rock.expands = append(rock.expands, &re)
+
+	return rock
+}
+
+// expansion to go on the rock entity
+type RockExpand struct {
+	plr   *Entity
+	speed float64
+}
+
+func (re *RockExpand) Moverock(rock *Entity) {
+	xv, yv := ChangeXY(rock.rot)
+
+	xv *= re.speed
+	yv *= re.speed
+
+	rock.pos = rock.pos.Add(pix.V(xv, yv))
+
+	// if off edge should go to other side
+	if rock.pos.X > WindowWidth+rock.dim.width {
+		rock.pos.X = 0
+	} else if rock.pos.X < 0-rock.dim.width {
+		rock.pos.X = WindowWidth
+	}
+	if rock.pos.Y > WindowHeight+rock.dim.height {
+		rock.pos.Y = 0
+	} else if rock.pos.Y < 0-rock.dim.height {
+		rock.pos.Y = WindowHeight
+	}
+}
+
+func (re *RockExpand) ExpandUpdate(rock *Entity) error {
+	// if rock.pos.Y < EntityDeleteYRange {
+
+	// }
+	re.Moverock(rock)
+
+	if CheckCollision(re.plr, rock) {
+		fmt.Println("Game over!")
+	}
+
+	return nil
+}
+
+type PlayerMissileRockCollision struct {
+	ps  *PlayerShooting
+	prc *PlayerRockController
+}
+
+func (pmrc *PlayerMissileRockCollision) ExpandUpdate(rock *Entity) error {
+	var rockIRemove []int
+	var rocksRemoved int
+
+	for _, missile := range pmrc.ps.activePool {
+		for rockI, rock := range pmrc.prc.pool {
+			if CheckCollision(missile, rock) {
+				fmt.Println("Missile hit!")
+				rockIRemove = append(rockIRemove, rockI)
+				missile.pos.Y = MissileDeleteYRange
+			}
+		}
+	}
+
+	// remove all the hit rocks
+	sort.Ints(rockIRemove)
+	for _, i := range rockIRemove {
+		pmrc.prc.pool = RemoveFromESlice(pmrc.prc.pool, i-rocksRemoved)
+		rocksRemoved++
 	}
 
 	return nil
