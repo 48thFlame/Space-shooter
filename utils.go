@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"os"
 	"time"
 
@@ -23,22 +24,37 @@ const (
 
 	WindowWidth  = 1120
 	WindowHeight = 864
+
+	StateMenu        = 1
+	StatePlaySingal  = 2
+	StateSignalOver  = 3
+	StateMultiPlayer = 4
+	StateQuit        = 5
 )
 
-func Initialize(windowTitle string) *Game { // (*pgl.WindowConfig, *pgl.Window, *FrameLimiter)
+func Initialize(windowTitle string) *Game {
+	rand.Seed(time.Now().UnixNano())
+	ico, err := LoadPicture("menu/icon.png")
+	if err != nil {
+		panic(err)
+	}
 	wcfg := pixgl.WindowConfig{
 		Title:  windowTitle,
 		Bounds: pix.R(0, 0, WindowWidth, WindowHeight),
+		Icon: []pix.Picture{ico},
 	}
 	win, err := pixgl.NewWindow(wcfg)
 	if err != nil {
 		panic(err)
 	}
 	win.SetSmooth(true)
+	
 
 	framer := NewFrameCounter()
 
 	g := &Game{wcfg: &wcfg, win: win, framer: framer}
+	g.quit = false
+	g.state = StateMenu
 	g.score = 0
 	g.level = 1
 	g.tw = NewTextWriter(g)
@@ -91,6 +107,10 @@ func CheckCollision(e1, e2 *Entity) bool {
 	e2r := EntityR(e2)
 
 	return e1r.Intersects(e2r)
+}
+
+func EToR(e *Entity) pix.Rect {
+	return pix.R(e.pos.X-e.dim.width/2, e.pos.Y-e.dim.height/2, e.pos.X+e.dim.width/2, e.pos.Y+e.dim.height/2)
 }
 
 func KeyPressed(e *Entity, key pixgl.Button) bool {
