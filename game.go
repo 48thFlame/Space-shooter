@@ -32,6 +32,8 @@ func (g *Game) WinUpdate() {
 
 func (g *Game) InitSignalPlayerGame() {
 	g.entities = []*Entity{}
+	g.score = 0
+	g.level = 1
 	plr := NewPlayer(g)
 
 	g.AddEntity(plr)
@@ -57,13 +59,12 @@ func (g *Game) InitEndSingalPlayer() {
 	menu := NewEntity("menu/game over.png", g.win)
 	menu.pos = pix.V(WindowWidth/2, WindowHeight/2)
 
-	button := NewButton("menu/button 4.png", pix.V(WindowWidth / 2, WindowHeight / 2 - 300), g, StateMenu)
+	button := NewButton("menu/button 4.png", pix.V(WindowWidth/2, WindowHeight/2-300), g, StateMenu)
 
 	g.AddEntity(menu)
 
 	g.AddEntity(button)
 }
-
 
 func (g *Game) EndSingalPlayer() {
 	g.WinClear()
@@ -73,8 +74,8 @@ func (g *Game) EndSingalPlayer() {
 	}
 
 	g.tw.WriteText(
-		fmt.Sprint(g.score), 
-		pix.V(750, 453), 
+		fmt.Sprint(g.score),
+		pix.V(750, 453),
 		color.RGBA{255, 255, 255, 255},
 	)
 

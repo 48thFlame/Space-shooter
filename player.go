@@ -24,7 +24,7 @@ const (
 	RockMinSpeed                   = 1.5
 	MissileDeleteYRange            = -10000 // the y that if a missile are below should delete them
 	RockDestroyScoreNum            = 10
-	RockOffEdgeCorrection          = 30
+	RockOffEdgeCorrection          = 48
 )
 
 func NewPlayer(g *Game) *Entity {
