@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "image/png"
+	_ "image/png" // necessary for initialization
 
 	pixgl "github.com/faiface/pixel/pixelgl"
 )
@@ -11,7 +11,7 @@ func main() {
 }
 
 func run() {
-	game := Initialize("Space shooter")
+	game := Initialize("Space shooters!")
 	game.InitMenu()
 
 	for !game.quit {
@@ -29,5 +29,4 @@ func run() {
 			game.quit = true
 		}
 	}
-
 }
