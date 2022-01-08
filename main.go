@@ -12,21 +12,19 @@ func main() {
 
 func run() {
 	game := Initialize("Space shooters!")
-	game.InitMenu()
+	game.ChangeState(StateMenu)
 
 	for !game.quit {
 		game.quit = game.win.Closed()
 		switch game.state {
 		case StateMenu:
 			game.Menu()
-		case StatePlaySingal:
+		case StateSingalPlayer:
 			game.SignalPlayerGame()
-		case StateSignalOver:
+		case StateSingalPlayerOver:
 			game.EndSingalPlayer()
 		case StateMultiPlayer:
 			game.state = StateMenu
-		case StateQuit:
-			game.quit = true
 		}
 	}
 }

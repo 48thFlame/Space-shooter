@@ -21,11 +21,11 @@ const (
 	WindowWidth  = 1120
 	WindowHeight = 864
 
-	StateMenu        = 1
-	StatePlaySingal  = 2
-	StateSignalOver  = 3
-	StateMultiPlayer = 4
-	StateQuit        = 5
+	StateMenu             = 1
+	StateSingalPlayer     = 2
+	StateSingalPlayerOver = 3
+	StateMultiPlayer      = 4
+	StateQuit             = 5
 )
 
 func Initialize(windowTitle string) *Game {
@@ -49,11 +49,18 @@ func Initialize(windowTitle string) *Game {
 
 	g := &Game{wcfg: &wcfg, win: win, framer: framer}
 	g.quit = false
-	g.state = StateMenu
+	// g.state = StateMenu
 	g.score = 0
-	// g.highescore = LoadHighScore().score
 	g.level = 1
 	g.tw = NewTextWriter(g)
+	g.initStateMap = map[int]func(*Game){
+		StateMenu:             InitMenu,
+		StateSingalPlayer:     InitSignalPlayerState,
+		StateSingalPlayerOver: InitSingalPlayerOverState,
+		StateMultiPlayer:      InitMultiPlayerState,
+		StateQuit:             InitQuitState,
+	}
+	g.ChangeState(StateMenu)
 
 	return g
 }

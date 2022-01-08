@@ -97,8 +97,9 @@ func (re *RockExpand) ExpandUpdate(rock *Entity) error {
 	re.Moverock(rock)
 
 	if CheckCollision(re.plr, rock, RockPlayerCollsionForgivenessAmount) {
-		re.g.state = StateSignalOver
-		re.g.InitEndSingalPlayer()
+		// re.g.state = StateSignalOver
+		// re.g.InitEndSingalPlayer()
+		re.g.ChangeState(StateSingalPlayerOver)
 	}
 
 	return nil

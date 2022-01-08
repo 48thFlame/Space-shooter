@@ -17,6 +17,10 @@ const (
 	PlayerMissilePoolSize               = 50	
 )
 
+// func NewPlayer(filePath string, g *Game) *Entity {
+	
+// }
+
 type PlayerControl struct {
 	speed  float64
 	xv, yv float64
