@@ -1,25 +1,139 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"time"
 
+	pix "github.com/faiface/pixel"
 	pixgl "github.com/faiface/pixel/pixelgl"
 )
 
-const (
-	PlayerAccSpeed                      = 0.66
-	PlayerMaxSpeed                      = 16
-	PlayerPercentOfSpeedShouldSlow      = 0.02
-	PlayerRotSpeed                      = 0.17
-	PlayerCooldown                      = time.Millisecond * 250
-	PlayerMissileSpeed                  = 25
-	PlayerMissilePoolSize               = 50	
+var (
+	MultiKeyMap = map[int]map[rune]pixgl.Button{
+		1: {
+			'f': pixgl.KeyW,
+			'l': pixgl.KeyA,
+			'r': pixgl.KeyD,
+			's': pixgl.KeyS,
+		},
+		2: {
+			'f': pixgl.KeyUp,
+			'l': pixgl.KeyLeft,
+			'r': pixgl.KeyRight,
+			's': pixgl.KeyDown,
+		},
+	}
+	MultiInitPosMap = map[int]pix.Vec{
+		1: pix.V(128, 128),
+		2: pix.V(WindowWidth-128, WindowHeight-128),
+	}
+	MultiInitRotMap = map[int]float64{
+		1: 1.75 * math.Pi,
+		2: 0.75 * math.Pi,
+	}
+	MultiHealths = map[int]int{
+		1: MultiPlayerStartHealth,
+		2: MultiPlayerStartHealth,
+	}
+	MultiPlayerColors = map[int]string{
+		1: "blue",
+		2: "purple",
+	}
 )
 
-// func NewPlayer(filePath string, g *Game) *Entity {
-	
-// }
+const (
+	PlayerAccSpeed                 = 0.475
+	PlayerMaxSpeed                 = 12
+	PlayerPercentOfSpeedShouldSlow = 0.01
+	PlayerRotSpeed                 = 0.12
+	PlayerCooldown                 = time.Millisecond * 250
+	PlayerMissileSpeed             = 32
+	PlayerMissilePoolSize          = 50
+	MultiPlayerStartHealth         = 3
+)
+
+func NewMultiPlayer(g *Game, plrNum int) (*Entity, *PlayerShooting) {
+	plr := NewEntity(fmt.Sprintf("sprites/player%v.png", plrNum), g.win)
+	plr.pos = MultiInitPosMap[plrNum]
+	plr.rot = MultiInitRotMap[plrNum]
+
+	pc := &PlayerControl{}
+	pc.speed = PlayerAccSpeed
+	pc.forward = MultiKeyMap[plrNum]['f']
+	pc.left = MultiKeyMap[plrNum]['l']
+	pc.right = MultiKeyMap[plrNum]['r']
+
+	pf := &PlayerFire{}
+	pf.pc = pc
+	pf.fire = NewEntity("sprites/fire.png", g.win)
+
+	var plrMissilePool []*Entity
+	for i := 0; i < PlayerMissilePoolSize; i++ {
+		missile := NewEntity("sprites/missile.png", g.win)
+		plrMissilePool = append(plrMissilePool, missile)
+	}
+	ps := &PlayerShooting{
+		shoot:        MultiKeyMap[plrNum]['s'],
+		missileSpeed: PlayerMissileSpeed,
+		pool:         plrMissilePool,
+		cooldown:     PlayerCooldown,
+	}
+
+	plr.expands = append(plr.expands, pc, pf, ps)
+
+	return plr, ps
+}
+
+func MoveMultiPlayersToStart(plr1, plr2 *Entity) {
+	plr1.pos = MultiInitPosMap[1]
+	plr1.rot = MultiInitRotMap[1]
+
+	plr2.pos = MultiInitPosMap[2]
+	plr2.rot = MultiInitRotMap[2]
+}
+
+func AddMPMCToPlr(plr1 *Entity, otherPS, myPS *PlayerShooting, g *Game, plrNum, otherPlrNum int) {
+	mpmc := &MultiPlayerMissileCollision{}
+	mpmc.g = g
+	mpmc.thisPlr = plr1
+	mpmc.myPS = myPS
+	mpmc.otherPS = otherPS
+	mpmc.thisPlrNum = plrNum
+	mpmc.otherPlrNum = otherPlrNum
+
+	plr1.expands = append(plr1.expands, mpmc)
+}
+
+type MultiPlayerMissileCollision struct {
+	g           *Game
+	thisPlr     *Entity
+	myPS        *PlayerShooting
+	otherPS     *PlayerShooting
+	thisPlrNum  int
+	otherPlrNum int
+}
+
+func (mpmc *MultiPlayerMissileCollision) ExpandUpdate(e *Entity) error {
+	for _, otherMissile := range mpmc.otherPS.activePool {
+		if CheckCollision(mpmc.thisPlr, otherMissile, 0) {
+			mpmc.g.plrHealths[mpmc.thisPlrNum] -= 1
+			otherMissile.pos.Y = MissileDeleteYRange
+			if mpmc.g.plrHealths[mpmc.thisPlrNum] < 1 {
+				mpmc.g.multiWinnerColor = MultiPlayerColors[mpmc.otherPlrNum]
+				mpmc.g.ChangeState(StateMultiPlayerOver)
+				break
+			}
+		}
+		for _, myMissile := range mpmc.myPS.activePool {
+			if CheckCollision(otherMissile, myMissile, 0) {
+				myMissile.pos.Y = MissileDeleteYRange
+				otherMissile.pos.Y = MissileDeleteYRange
+			}
+		}
+	}
+	return nil
+}
 
 type PlayerControl struct {
 	speed  float64

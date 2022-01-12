@@ -23,8 +23,12 @@ func run() {
 			game.SignalPlayerGame()
 		case StateSingalPlayerOver:
 			game.EndSingalPlayer()
+		// case StateHighScore:
+		// 	game.HighScore()
 		case StateMultiPlayer:
-			game.state = StateMenu
+			game.MultiPlayer()
+		case StateMultiPlayerOver:
+			game.MultiPlayerOver()
 		}
 	}
 }

@@ -11,16 +11,19 @@ import (
 )
 
 type Game struct {
-	quit         bool
-	state        int
-	initStateMap map[int]func(g *Game)
-	wcfg         *pixgl.WindowConfig
-	win          *pixgl.Window
-	framer       *FrameCounter
-	entities     []*Entity
-	tw           *TextWriter
-	score        int
-	level        int
+	quit             bool
+	state            int
+	background       *Entity
+	initStateMap     map[int]func(g *Game)
+	wcfg             *pixgl.WindowConfig
+	win              *pixgl.Window
+	framer           *FrameCounter
+	entities         []*Entity
+	tw               *TextWriter
+	score            int
+	level            int
+	plrHealths       map[int]int
+	multiWinnerColor string
 }
 
 func (g *Game) ChangeState(state int) {
@@ -30,6 +33,7 @@ func (g *Game) ChangeState(state int) {
 
 func (g *Game) WinClear() {
 	g.win.Clear(color.RGBA{30, 30, 30, 255})
+	g.background.Draw()
 }
 
 func (g *Game) WinUpdate() {
@@ -40,7 +44,6 @@ func (g *Game) WinUpdate() {
 func (g *Game) AddEntity(e *Entity) {
 	g.entities = append(g.entities, e)
 }
-
 
 func NewEntity(pictureFile string, win *pixgl.Window) *Entity {
 	e := Entity{}
@@ -143,10 +146,10 @@ type TextWriter struct {
 	txt   *text.Text
 }
 
-func (tw *TextWriter) WriteText(txt string, pos pix.Vec, color color.Color) {
+func (tw *TextWriter) WriteText(txt string, pos pix.Vec, color color.Color, size float64) {
 	tw.txt.Clear()
 	tw.txt.Color = color
 	tw.txt.WriteString(txt)
-	txtMoved := pix.IM.Moved(pos)
+	txtMoved := pix.IM.Moved(pos).Scaled(pos, size)
 	tw.txt.Draw(tw.g.win, txtMoved)
 }

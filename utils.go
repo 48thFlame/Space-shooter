@@ -21,11 +21,15 @@ const (
 	WindowWidth  = 1120
 	WindowHeight = 864
 
+	BackgroundFilePath = "menu/background.png"
+
+	StateQuit             = 0
 	StateMenu             = 1
 	StateSingalPlayer     = 2
 	StateSingalPlayerOver = 3
-	StateMultiPlayer      = 4
-	StateQuit             = 5
+	StateHighScore        = 4
+	StateMultiPlayer      = 5
+	StateMultiPlayerOver  = 6
 )
 
 func Initialize(windowTitle string) *Game {
@@ -47,18 +51,24 @@ func Initialize(windowTitle string) *Game {
 
 	framer := NewFrameCounter()
 
+	background := NewEntity(BackgroundFilePath, win)
+	background.pos = pix.V(WindowWidth/2, WindowHeight/2)
+
 	g := &Game{wcfg: &wcfg, win: win, framer: framer}
 	g.quit = false
-	// g.state = StateMenu
+	g.background = background
 	g.score = 0
 	g.level = 1
+	g.plrHealths = MultiHealths
 	g.tw = NewTextWriter(g)
 	g.initStateMap = map[int]func(*Game){
+		StateQuit:             InitQuitState,
 		StateMenu:             InitMenu,
 		StateSingalPlayer:     InitSignalPlayerState,
 		StateSingalPlayerOver: InitSingalPlayerOverState,
-		StateMultiPlayer:      InitMultiPlayerState,
-		StateQuit:             InitQuitState,
+		// StateHighScore:        InitHighScoreState,
+		StateMultiPlayer:     InitMultiPlayerState,
+		StateMultiPlayerOver: InitMultiPlayerOverState,
 	}
 	g.ChangeState(StateMenu)
 

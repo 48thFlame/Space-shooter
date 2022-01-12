@@ -16,7 +16,7 @@ const (
 	RockMaxSpeed                        = 4.5
 	RockMinSpeed                        = 1.5
 	RockDestroyScoreNum                 = 10
-	RockOffEdgeCorrection               = 50
+	RockOffEdgeCorrection               = 56
 )
 
 func NewRockController(plr *Entity, g *Game) *PlayerRockController {
@@ -97,8 +97,6 @@ func (re *RockExpand) ExpandUpdate(rock *Entity) error {
 	re.Moverock(rock)
 
 	if CheckCollision(re.plr, rock, RockPlayerCollsionForgivenessAmount) {
-		// re.g.state = StateSignalOver
-		// re.g.InitEndSingalPlayer()
 		re.g.ChangeState(StateSingalPlayerOver)
 	}
 
